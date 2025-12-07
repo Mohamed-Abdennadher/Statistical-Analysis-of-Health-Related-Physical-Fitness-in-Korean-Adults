@@ -12,8 +12,8 @@ library(lubridate)
 library(VIM)
 library(GGally)
 # Importation du dataset initial
-df_initial <- read_excel("D:/Desktop/Statistiques classe/projet/DATA (1).xlsx", na = "")
-view(df)
+df_initial <- read_excel("C:/Users/ASUS/Downloads/Projet Stat/DATA.xlsx", na = "")
+view(df_initial)
 # Nettoyage des noms de colonnes
 names(df_initial) <- df_initial %>% names() %>% 
   tolower() %>% 
@@ -70,7 +70,7 @@ mean(is.na(df_initial)) * 100
 #🔵 1.4 Détection des outliers#
 
 #Méthode univariée — Boxplots
-numeric_vars <- df_initial %>% select(where(is.numeric))
+numeric_desc <- df_initial %>% select(where(is.numeric))
 numeric_desc %>%
   pivot_longer(everything()) %>%
   ggplot(aes(x = name, y = value)) +
@@ -557,3 +557,101 @@ kable(
 #==>Le test F de Fisher est conçu uniquement pour comparer les variances de deux groupes. Dans cette étude, la variable qualitative « sexe » ne comporte que deux modalités (homme et femme)
 
 
+#-----------------------------------------------------------
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+#🔵 4.1.4 : Test t à 1 échantillon (comparaison à la valeur théorique)
+
+#🔹 Hypothèses du Test t
+#H₀ : μ = μ₀ (la moyenne observée est égale à la valeur théorique)
+
+#H₁ : μ ≠ μ₀ (la moyenne observée est différente de la valeur théorique)
+
+### --- 1. Valeurs de référence issues de l’article ---
+ref_values <- list(
+  bmi = 22.8,
+  sit = 17.56,
+  vo2 = 37.3
+)
+
+### --- 2. Tests t à 1 échantillon ---
+#🔹 1. BMI
+
+#H₀ : μ_BMI = 22
+
+#H₁ : μ_BMI ≠ 22
+
+test_bmi_1 <- t.test(df_cleaned$bmi, mu = ref_values$bmi)
+#🔹 2. Souplesse (Sit & Reach)
+
+#H₀ : μ_souplesse = 28
+
+#H₁ : μ_souplesse ≠ 28
+test_sit_1 <- t.test(df_cleaned$sit_and_reach_cm, mu = ref_values$sit)
+#🔹 3. VO2 estimé
+
+#H₀ : μ_VO2 = 42
+
+#H₁ : μ_VO2 ≠ 42
+test_vo2_1 <- t.test(df_cleaned$vo2_estimate_ml_per_kg_min, mu = ref_values$vo2)
+
+### --- 3. Construction du tableau final ---
+ttest1_table <- tibble(
+  Variable = c("BMI", "Souplesse (Sit & Reach)", "VO2 estimé"),
+  
+  `Valeur théorique (µ₀)` = c(
+    ref_values$bmi,
+    ref_values$sit,
+    ref_values$vo2
+  ),
+  
+  `Moyenne observée` = c(
+    round(mean(df_cleaned$bmi, na.rm = TRUE), 2),
+    round(mean(df_cleaned$sit_and_reach_cm, na.rm = TRUE), 2),
+    round(mean(df_cleaned$vo2_estimate_ml_per_kg_min, na.rm = TRUE), 2)
+  ),
+  
+  `t statistic` = c(
+    round(test_bmi_1$statistic, 4),
+    round(test_sit_1$statistic, 4),
+    round(test_vo2_1$statistic, 4)
+  ),
+  
+  `p-value` = c(
+    round(test_bmi_1$p.value, 4),
+    round(test_sit_1$p.value, 4),
+    round(test_vo2_1$p.value, 4)
+  ),
+  
+  `Conclusion` = c(
+    ifelse(test_bmi_1$p.value > 0.05, "≃ Égale à µ₀", "≠ Différente de µ₀"),
+    ifelse(test_sit_1$p.value > 0.05, "≃ Égale à µ₀", "≠ Différente de µ₀"),
+    ifelse(test_vo2_1$p.value > 0.05, "≃ Égale à µ₀", "≠ Différente de µ₀")
+  )
+)
+
+### --- 4. Affichage kable propre ---
+kable(
+  ttest1_table,
+  caption = "Test t à 1 échantillon – Comparaison des moyennes avec les valeurs de référence de l’article"
+) %>%
+  kable_styling(
+    full_width = FALSE,
+    bootstrap_options = c("striped", "hover", "condensed")
+  )
+
+#➡️ Le BMI moyen de la population étudiée est significativement plus élevé que celui rapporté dans l’article.
+#   Cela suggère que les participants sont globalement plus corpulents que la population de référence.
+#➡️ La souplesse moyenne dans notre échantillon est très significativement plus faible que la valeur de référence.
+#   L’écart est très important, ce qui montre que la population étudiée présente une mobilité nettement réduite.
+#➡️ Le VO₂ max estimé est significativement inférieur à celui de l’article.
+#   Cela reflète une capacité cardiovasculaire légèrement plus faible, mais l’écart reste moins important que pour la souplesse.
+
+#➡️ Les trois tests montrent que les moyennes de notre échantillon diffèrent de manière significative des valeurs de référence issues de la littérature.
+#La population étudiée semble :
+#plus lourde (BMI plus élevé),
+#moins flexible (écart très marqué),
+#moins endurante (VO₂ plus faible).
+#Ces résultats suggèrent un profil global de condition physique moins favorable par rapport à la population théorique utilisée comme référence.
