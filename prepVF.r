@@ -1,8 +1,8 @@
 #-----------------------------------------------------------
 #🟣 PHASE 1 — PRÉPARATION DES DONNÉES
------------------------------------------------------------#
+#-----------------------------------------------------------
   
-#🔵 1.1 Importation des données & nettoyage des noms#
+#🔵 1.1 Importation des données & nettoyage des noms
 # Packages
 library(tidyverse)
 library(naniar)
@@ -12,7 +12,7 @@ library(lubridate)
 library(VIM)
 library(GGally)
 # Importation du dataset initial
-df_initial <- read_excel("D:/Desktop/Statistiques classe/projet/DATA (1).xlsx", na = "")
+df_initial <- read_excel("C:\\Users\\21650\\Downloads\\DATA (1).xlsx", na = "")
 view(df)
 # Nettoyage des noms de colonnes
 names(df_initial) <- df_initial %>% names() %>% 
@@ -70,7 +70,7 @@ mean(is.na(df_initial)) * 100
 #🔵 1.4 Détection des outliers#
 
 #Méthode univariée — Boxplots
-numeric_vars <- df_initial %>% select(where(is.numeric))
+numeric_desc <- df_initial %>% select(where(is.numeric))
 numeric_desc %>%
   pivot_longer(everything()) %>%
   ggplot(aes(x = name, y = value)) +
@@ -556,4 +556,81 @@ kable(
 #==>Le test F de Fisher a été utilisé afin de vérifier l’égalité des variances entre les hommes et les femmes pour les variables à distribution normale. Les résultats montrent que les variances du BMI diffèrent significativement entre les sexes (p < 0.001), tandis que celles de la souplesse et du VO₂ estimé peuvent être considérées comme homogènes (p > 0.05). En conséquence, un t-test de Welch a été retenu pour le BMI, alors qu’un t-test classique a été appliqué pour la souplesse et le VO₂.
 #==>Le test F de Fisher est conçu uniquement pour comparer les variances de deux groupes. Dans cette étude, la variable qualitative « sexe » ne comporte que deux modalités (homme et femme)
 
+#4.3 — Wilcoxon (Homme vs Femme)
+df_analysis <- df_cleaned
+wilcox_age <- wilcox.test(age ~ sex, data = df_analysis)
+wilcox_fat <- wilcox.test(percent_body_fat ~ sex, data = df_analysis)
+wilcox_hgs <- wilcox.test(hand_grip_strength_kg ~ sex, data = df_analysis)
+wilcox_situps <- wilcox.test(sit_ups_count ~ sex, data = df_analysis)
+
+library(tibble)
+library(kableExtra)
+library(dplyr)
+
+wilcox_results <- tibble(
+  Variable = c("Âge", "Masse grasse (%)", "Force de préhension (kg)", "Sit-ups"),
+  p_value = c(
+    wilcox_age$p.value,
+    wilcox_fat$p.value,
+    wilcox_hgs$p.value,
+    wilcox_situps$p.value
+  ),
+  Decision = ifelse(
+    p_value < 0.05,
+    "Rejet de H0 : différence Homme/Femme",
+    "Non-rejet de H0 : pas de différence significative"
+  )
+)
+
+wilcox_results %>%
+  mutate(p_value = round(p_value, 4)) %>%
+  kable(
+    caption = "Résultats du test Wilcoxon–Mann–Whitney (Homme vs Femme)",
+    align = "c"
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+#4.4 — Kruskal–Wallis (≥ 3 groupes)
+df_analysis <- df_analysis %>%
+  mutate(
+    groupe_age = case_when(
+      age < 30 ~ "18-29",
+      age < 40 ~ "30-39",
+      age < 50 ~ "40-49",
+      TRUE ~ "50-64"
+    ),
+    groupe_age = factor(groupe_age)
+  )
+
+kw_age <- kruskal.test(vo2_estimate_ml_per_kg_min ~ groupe_age, data = df_analysis)
+
+df_analysis <- df_analysis %>%
+  mutate(
+    categorie_BMI = case_when(
+      bmi < 18.5 ~ "Insuffisance pondérale",
+      bmi < 25 ~ "Normale",
+      bmi < 30 ~ "Surpoids",
+      TRUE ~ "Obésité"
+    ),
+    categorie_BMI = factor(categorie_BMI)
+  )
+
+kw_bmi <- kruskal.test(vo2_estimate_ml_per_kg_min ~ categorie_BMI, data = df_analysis)
+
+kw_results <- tibble(
+  Test = c("VO2 ~ groupes d'âge", "VO2 ~ catégories BMI"),
+  p_value = c(kw_age$p.value, kw_bmi$p.value),
+  Decision = ifelse(
+    p_value < 0.05,
+    "Rejet de H0 : au moins un groupe diffère",
+    "Non-rejet de H0 : pas de différence significative"
+  )
+)
+
+kw_results %>%
+  mutate(p_value = round(p_value, 4)) %>%
+  kable(
+    caption = "Résultats du test de Kruskal–Wallis",
+    align = "c"
+  ) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
 
