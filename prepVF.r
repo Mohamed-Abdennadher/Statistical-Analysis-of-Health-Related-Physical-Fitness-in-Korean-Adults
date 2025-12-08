@@ -1,6 +1,6 @@
 #-----------------------------------------------------------
 #🟣 PHASE 1 — PRÉPARATION DES DONNÉES
------------------------------------------------------------#
+#-----------------------------------------------------------#
   
 #🔵 1.1 Importation des données & nettoyage des noms#
 # Packages
@@ -12,7 +12,7 @@ library(lubridate)
 library(VIM)
 library(GGally)
 # Importation du dataset initial
-df_initial <- read_excel("D:/Desktop/Statistiques classe/projet/DATA (1).xlsx", na = "")
+df_initial <- read_excel("C:/Users/Mohamed/Desktop/stat/DATA.xlsx", na = "")
 view(df)
 # Nettoyage des noms de colonnes
 names(df_initial) <- df_initial %>% names() %>% 
@@ -71,9 +71,9 @@ mean(is.na(df_initial)) * 100
 
 #Méthode univariée — Boxplots
 numeric_vars <- df_initial %>% select(where(is.numeric))
-numeric_desc %>%
+numeric_vars %>%
   pivot_longer(everything()) %>%
-  ggplot(aes(x = name, y = value)) +
+  ggplot(aes(x = name, y = value )) +
   geom_boxplot(fill = "#E64B35") +
   coord_flip() +
   theme_minimal() +
@@ -555,5 +555,113 @@ kable(
 #INTERPRETATION:
 #==>Le test F de Fisher a été utilisé afin de vérifier l’égalité des variances entre les hommes et les femmes pour les variables à distribution normale. Les résultats montrent que les variances du BMI diffèrent significativement entre les sexes (p < 0.001), tandis que celles de la souplesse et du VO₂ estimé peuvent être considérées comme homogènes (p > 0.05). En conséquence, un t-test de Welch a été retenu pour le BMI, alors qu’un t-test classique a été appliqué pour la souplesse et le VO₂.
 #==>Le test F de Fisher est conçu uniquement pour comparer les variances de deux groupes. Dans cette étude, la variable qualitative « sexe » ne comporte que deux modalités (homme et femme)
+
+
+#=======================================================================================================================================================
+# 1. Exécution du t-test de Welch (variances inégales)
+t_test_bmi <- t.test(bmi ~ sex, data = df_cleaned, var.equal = FALSE)
+
+# 2. Création d'un tableau synthétique des résultats
+library(broom) # Pour mettre en forme le résultat du test
+
+resultats_t_bmi <- tidy(t_test_bmi) %>%
+  select(statistic, p.value, parameter, method) %>%
+  rename(
+    T_statistic = statistic,
+    P_value = p.value,
+    Degrees_of_Freedom = parameter,
+    Test_Method = method
+  )
+
+# 3. Affichage du tableau
+kable(resultats_t_bmi, caption = "Résultats du t-test de Welch pour le BMI (Homme vs Femme)") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+
+# 4. Visualisation (Boxplot avec moyennes)
+ggplot(df_cleaned, aes(x = sex, y = bmi, fill = sex)) +
+  geom_boxplot(alpha = 0.6, outlier.colour = "red", outlier.shape = 1) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 4, color = "black") + # Ajout du point moyen
+  scale_fill_manual(values = c("Male" = "#4DBBD5", "Female" = "#E64B35")) +
+  labs(
+    title = "Comparaison du BMI selon le sexe",
+    subtitle = paste("Test de Welch : p-value =", format.pval(t_test_bmi$p.value, digits = 3)),
+    x = "Sexe",
+    y = "BMI (kg/m²)"
+  ) +
+  theme_minimal()
+
+
+#===================================================================================================================================
+
+# 1. Exécution du t-test classique (variances égales)
+t_test_sit <- t.test(sit_and_reach_cm ~ sex, data = df_cleaned, var.equal = TRUE)
+
+# 2. Création d'un tableau synthétique des résultats
+library(broom)
+
+resultats_t_sit <- tidy(t_test_sit) %>%
+  select(statistic, p.value, parameter, method, estimate) %>%
+  rename(
+    T_statistic = statistic,
+    P_value = p.value,
+    Degrees_of_Freedom = parameter,
+    Test_Method = method,
+    Mean_Difference = estimate
+  )
+
+# 3. Affichage du tableau
+kable(resultats_t_sit, caption = "Résultats du t-test classique pour la souplesse (Homme vs Femme)") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+
+# 4. Visualisation (Boxplot)
+ggplot(df_cleaned, aes(x = sex, y = sit_and_reach_cm, fill = sex)) +
+  geom_boxplot(alpha = 0.6, outlier.colour = "red", outlier.shape = 1) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 4, color = "black") + 
+  scale_fill_manual(values = c("Male" = "#4DBBD5", "Female" = "#E64B35")) +
+  labs(
+    title = "Comparaison de la souplesse (Sit & Reach) selon le sexe",
+    subtitle = paste("t-Student classique : p-value =", format.pval(t_test_sit$p.value, digits = 3)),
+    x = "Sexe",
+    y = "Sit and Reach (cm)"
+  ) +
+  theme_minimal()
+
+
+
+#=========================================================================================================
+
+
+# 1. Exécution du t-test classique (variances égales)
+t_test_vo2 <- t.test(vo2_estimate_ml_per_kg_min ~ sex, data = df_cleaned, var.equal = TRUE)
+
+# 2. Création d'un tableau synthétique des résultats
+library(broom)
+
+resultats_t_vo2 <- tidy(t_test_vo2) %>%
+  select(statistic, p.value, parameter, method, estimate) %>%
+  rename(
+    T_statistic = statistic,
+    P_value = p.value,
+    Degrees_of_Freedom = parameter,
+    Test_Method = method,
+    Mean_Difference = estimate
+  )
+
+# 3. Affichage du tableau
+kable(resultats_t_vo2, caption = "Résultats du t-test classique pour le VO₂ estimé (Homme vs Femme)") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+
+# 4. Visualisation (Boxplot avec moyenne)
+ggplot(df_cleaned, aes(x = sex, y = vo2_estimate_ml_per_kg_min, fill = sex)) +
+  geom_boxplot(alpha = 0.6, outlier.colour = "red", outlier.shape = 1) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 4, color = "black") + 
+  scale_fill_manual(values = c("Male" = "#4DBBD5", "Female" = "#E64B35")) +
+  labs(
+    title = "Comparaison du VO₂ estimé selon le sexe",
+    subtitle = paste("t-Student classique : p-value =", format.pval(t_test_vo2$p.value, digits = 3)),
+    x = "Sexe",
+    y = "VO₂ estimé (ml/kg/min)"
+  ) +
+  theme_minimal()
 
 
